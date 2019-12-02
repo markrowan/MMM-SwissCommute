@@ -97,25 +97,15 @@ Module.register("MMM-SwissCommute",{
 		
 		var table = document.createElement("table");
 		table.className = "small";
+		
+		var non_reachable = 0;
 
 		for (var t in this.trains) {
 			var trains = this.trains[t];
 
 			var row = document.createElement("tr");
 			table.appendChild(row);
-
-			// Number
-			var trainNumberCell = document.createElement("td");
-			trainNumberCell.innerHTML = "<i class=\"fa fa-train\"></i> " + trains.number;
-			trainNumberCell.className = "align-left";
-			row.appendChild(trainNumberCell);
-
-			// Direction
-			var trainToCell = document.createElement("td");
-			trainToCell.innerHTML = trains.to;
-			trainToCell.className = "align-left trainto";
-			row.appendChild(trainToCell);
-
+			
 			// Time
 			var dTime = moment(trains.departureTimestampRaw);
 			var diff = dTime.diff(currentTime, 'minutes');
@@ -124,10 +114,15 @@ Module.register("MMM-SwissCommute",{
 			depCell.className = "align-left departuretime";
 			depCell.innerHTML = trains.departureTimestamp;
 
-			if (diff <= this.config.minWalkingTime ){
-				row.className = "red";
+			if(trains.delay > 0){
+				if (diff + trains.delay < this.config.minWalkingTime ){
+				    non_reachable++;  // Count number of non-reachable connections to start fading only reachable ones
+    				row.className = "darkgrey";
+				}
+			} else if (diff < this.config.minWalkingTime ){
+				non_reachable++;  // Count number of non-reachable connections to start fading only reachable ones
+				row.className = "darkgrey";
 			}
-
 			row.appendChild(depCell);
 
 			// Delay
@@ -136,11 +131,25 @@ Module.register("MMM-SwissCommute",{
                 delayCell.className = "delay red";
                 delayCell.innerHTML = "+" + trains.delay + " min";
             } else {
-                delayCell.className = "delay red";
-                delayCell.innerHTML = ""; //trains.delay;
+                delayCell.className = "black";
+                delayCell.innerHTML = "+0 min"; //trains.delay;
             }
             row.appendChild(delayCell);
-            
+
+            // Number
+			var trainNumberCell = document.createElement("td");
+			if (trains.type.localeCompare("bus")==0 || trains.type.localeCompare("post")==0){
+				trainNumberCell.innerHTML = "<i class=\"fa fa-bus\"></i> " + trains.number;
+			} else if(trains.type.localeCompare("tram")==0){
+				trainNumberCell.innerHTML = "<i class=\"fa fa-subway\"></i> " + trains.number;
+			}else if(trains.type.localeCompare("strain")==0 || trains.type.localeCompare("express_train")==0 || trains.type.localeCompare("train")==0){
+				trainNumberCell.innerHTML = "<i class=\"fa fa-train\"></i> " + trains.number;
+			}else{
+				trainNumberCell.innerHTML = "" + trains.number;
+			}
+			trainNumberCell.className = "align-left";
+			row.appendChild(trainNumberCell);
+
             // Track
             if (!this.config.hideTrackInfo) {
 	            var trackCell = document.createElement("td");
@@ -149,14 +158,16 @@ Module.register("MMM-SwissCommute",{
             	row.appendChild(trackCell);
             }
 
-			if (this.config.fade && this.config.fadePoint < 1) {
-				if (this.config.fadePoint < 0) {
-					this.config.fadePoint = 0;
-				}
-				var startingPoint = this.trains.length * this.config.fadePoint;
-				var steps = this.trains.length - startingPoint;
-				if (t >= startingPoint) {
-					var currentStep = t - startingPoint;
+			// Direction
+			var trainToCell = document.createElement("td");
+			trainToCell.innerHTML = trains.to;
+			trainToCell.className = "align-right trainto";
+			row.appendChild(trainToCell);
+
+			if (this.config.fade) {
+				var steps = this.trains.length - non_reachable;
+				if (t >= non_reachable) {
+					var currentStep = t - non_reachable;
 					row.style.opacity = 1 - (1 / steps * currentStep);
 				}
 			}
@@ -231,7 +242,8 @@ Module.register("MMM-SwissCommute",{
 						delay: parseInt(trains.dep_delay),
 						to: trains.legs[0].terminal,
 						number: trains.legs[0].line,
-						track: trains.legs[0].track
+						track: trains.legs[0].track,
+						type: trains.legs[0].type
 					};
 				
 					if (typeof conn.track != 'undefined') {

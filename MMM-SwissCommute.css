@@ -15,9 +15,17 @@
 }
 
 .MMM-SwissCommute table {
-    width: 350px;
+    width: 480px;
 }
 
 .MMM-SwissCommute .red {
     color: #FF0000
+}
+
+.MMM-SwissCommute .darkgrey {
+    color: #424242
+}
+
+.MMM-SwissCommute .black {
+    color: #000000
 }
